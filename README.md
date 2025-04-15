@@ -9,8 +9,10 @@
   <li>Easier definition of the range to scan by defining it as a power of 2.</li>
   <li>Only 1 GPU allowed for better efficiency.</li>
   <li>Only compressed addresses and prefixes.</li>
-  <li>NEW: Pressing "p" it is possibile to pause vanitysearch freeing the GPU, press again "p" to resume.</li>
-  <li>NEW: Added prefix search. Be careful to -m parameter.</li>
+  <li>Pressing "p" it is possibile to pause vanitysearch freeing the GPU, press again "p" to resume.</li>
+  <li>Added prefix search. Be careful to -m parameter.</li>
+  <li>NEW: Added Random mode.Each GPU thread scans 1024 consecutive random keys at each step.</li>
+
 </ul>
 
 # Usage
@@ -34,10 +36,14 @@ VanitySeacrh [-v] [-gpuId] [-i inputfile] [-o outputfile] [-start HEX] [-range] 
 
  -stop: Stop when all prefixes are found
 
+ -random: Random mode active. Each GPU thread scan 1024 random sequentally keys at each step. Not active by default
+
 
 If you want to search for multiple addresses or prefixes, insert them into the input file.
 
 Be careful, if you are looking for multiple prefixes, it may be necessary to increase MaxFound using "-m". Use multiples of 65536. The speed might decrease slightly.
+
+In Random mode each thread selects a random number within its subrange and scans 512 keys forward and 512 keys backward. Random mode has no memory; the higher the percentage of the range that is scanned, the greater the probability that already scanned keys will be scanned again.
  
 
 # Exemples:
@@ -50,6 +56,8 @@ Windows:
 ```./VanitySearch.exe -gpuId 1 -o output.txt -start 3BA89530000000000 -range 42 1MVDYgVaSN6iKKEsbzRUAYFrYJadLYZvvZ```
 
 ```./VanitySearch.exe -gpuId 0 -start 3BA89530000000000 -range 41 1MVDYgVaSN6iKKEsbzRUAYFrYJadLYZvvZ ```
+
+```./VanitySearch.exe -gpuId 0 -start 3BA89530000000000 -range 41 -random 1MVDYgVaSN6iKKEsbzRUAYFrYJadLYZvvZ ```
 
 Linux
 

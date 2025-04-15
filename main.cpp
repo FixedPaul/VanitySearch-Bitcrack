@@ -42,6 +42,7 @@ std::atomic<bool> Paused(false);
 std::atomic<bool> stopMonitorKey(false);
 int idxcount;
 double t_Paused;
+bool randomMode = false;
 
 #if defined(_WIN32) || defined(_WIN64)
 void monitorKeypress() {
@@ -101,7 +102,7 @@ void monitorKeypress() {
 #endif
 
 
-#define RELEASE "2.01 by FixedPaul"
+#define RELEASE "2.10 by FixedPaul"
 
 using namespace std;
 
@@ -109,7 +110,7 @@ using namespace std;
 
 void printUsage() {
 
-	printf("VanitySeacrh [-v] [-gpuId] [-i inputfile] [-o outputfile] [-start HEX] [-range] [-m] [-stop]\n \n");
+	printf("VanitySeacrh [-v] [-gpuId] [-i inputfile] [-o outputfile] [-start HEX] [-range] [-m] [-stop] [-random]\n \n");
 	printf(" -v: Print version\n");
 	printf(" -i inputfile: Get list of addresses to search from specified file\n");
 	printf(" -o outputfile: Output results to the specified file\n");
@@ -118,6 +119,7 @@ void printUsage() {
 	printf(" -range bit range dimension. start -> (start + 2^range).\n");
 	printf(" -m: Max number of prefixes found by each kernel call, default is 262144 (use multiple of 65536)\n");
 	printf(" -stop: Stop when all prefixes are found\n");
+	printf(" -random: Random mode active. Each GPU thread scan 1024 random sequentally keys at each step. Not active by default\n");
 	exit(-1);
 
 }
@@ -585,6 +587,10 @@ int main(int argc, char* argv[]) {
 			stop = true;
 			a++;
 		}
+		else if (strcmp(argv[a], "-random") == 0) {
+			randomMode = true;
+			a++;
+		}
 		else if (strcmp(argv[a], "-range") == 0) {
 			a++;
 			range = (uint64_t)getInt("range", argv[a]);
@@ -646,6 +652,9 @@ int main(int argc, char* argv[]) {
 		fprintf(stdout, "[keyspace]  range=2^%d\n", range);
 		fprintf(stdout, "[keyspace]  start=%s\n", bc->ksStart.GetBase16().c_str());
 		fprintf(stdout, "[keyspace]    end=%s\n", bc->ksFinish.GetBase16().c_str());
+		if (randomMode) {
+			fprintf(stdout, "Random Mode\n");
+		}
 		fflush(stdout);
 
 

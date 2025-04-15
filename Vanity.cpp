@@ -29,6 +29,9 @@
 #include <algorithm>
 #include <thread>
 #include <atomic>
+#include <ctime> 
+
+
 
 //#define GRP_SIZE 256
 
@@ -48,6 +51,8 @@ VanitySearch::VanitySearch(Secp256K1* secp, vector<std::string>& inputAddresses,
 	this->maxFound = maxFound;	
 	this->searchType = -1;
 	this->bc = bc;	
+
+	rseed(time(NULL));
 	
 	addresses.clear();
 
@@ -893,6 +898,15 @@ void VanitySearch::FindKeyGPU(TH_PARAM* ph) {
 	Point* publicKeys = new Point[numThreadsGPU];
 	vector<ITEM> found;
 
+	Point RandomJump_P;
+	Int RandomJump_K;
+	Int RandomJump_K_last;
+	Int RandomJump_K_tot;
+	RandomJump_K.SetInt32(STEP_SIZE);
+	RandomJump_K_last.SetInt32(0);
+	RandomJump_K_tot.SetInt32(0);
+	bool kneg = false;
+
 	fprintf(stdout, "GPU: %s\n", g.deviceName.c_str());
 	fflush(stdout);
 
@@ -925,10 +939,12 @@ void VanitySearch::FindKeyGPU(TH_PARAM* ph) {
 	t0 = Timer::get_tick();
 
 	getGPUStartingKeys(bc->ksStart, bc->ksFinish, g.GetGroupSize(), numThreadsGPU, publicKeys, (uint64_t)(1ULL * idxcount * g.GetStepSize()));
+
 	ok = g.SetKeys(publicKeys);
 	delete[] publicKeys;
 
 	ttot = Timer::get_tick() - t0;
+
 
 	printf("Starting keys set in %.2f seconds \n", ttot);
 	fflush(stdout);
@@ -942,27 +958,60 @@ void VanitySearch::FindKeyGPU(TH_PARAM* ph) {
 
 	endOfSearch = false;
 
+
 	while (ok && !endOfSearch) {
 
-		if (!Pause) {
+		if (!Pause) {	
+
+
+			if (randomMode) {
+				RandomJump_K_last.Set(&RandomJump_K);
+				RandomJump_K_tot.Add(&RandomJump_K);
+
+				RandomJump_K.Rand(256);
+				RandomJump_K.Mod(&stepThread);
+				RandomJump_K.Sub(&RandomJump_K_tot);
+				
+				if (RandomJump_K.IsNegative()) {
+					RandomJump_K.Neg();
+					RandomJump_P = secp->ComputePublicKey(&RandomJump_K);
+					RandomJump_P.y.ModNeg();
+					RandomJump_K.Neg();
+				}
+				else {
+					RandomJump_P = secp->ComputePublicKey(&RandomJump_K);
+				}
+				
+				ok = g.SetRandomJump(RandomJump_P);
+			}
 
 			ok = g.Launch(found, true);
 			idxcount += 1;
+
+			//printf("\n rnd: %s  idx:  %d \n", RandomJump_K_tot.GetBase10().c_str(), idxcount);
 
 			ttot = Timer::get_tick() - t0 + t_Paused;
 
 			keycount.SetInt32(idxcount - 1);
 			keycount.Mult(STEP_SIZE);
 
+
 			for (int i = 0; i < (int)found.size() && !endOfSearch; i++) {
 
 				ITEM it = found[i];
 				part_key.Set(&stepThread);
 				part_key.Mult(it.thId);
-
+	
 				privkey.Set(&bc->ksStart);
 				privkey.Add(&part_key);
-				privkey.Add(&keycount);
+
+				if (randomMode) {
+					privkey.Add(&RandomJump_K_tot);
+					privkey.Sub(&RandomJump_K_last);
+				}
+				else {				
+					privkey.Add(&keycount);
+				}
 			
 				checkAddr(*(address_t*)(it.hash), it.hash, privkey, it.incr, it.endo, it.mode);
 			}
@@ -972,6 +1021,10 @@ void VanitySearch::FindKeyGPU(TH_PARAM* ph) {
 
 			keys_n = 1ULL * STEP_SIZE * numThreadsGPU;
 			keys_n = keys_n * idxcount;
+		
+			
+
+			
 
 		} else {
 			printf("Pausing...\r");
@@ -988,7 +1041,7 @@ void VanitySearch::FindKeyGPU(TH_PARAM* ph) {
 
 		
 
-		if (keycount.IsGreaterOrEqual(&taskSize))
+		if (keycount.IsGreaterOrEqual(&taskSize) && (!randomMode))
 		{
 			double avg_speed = static_cast<double>(keys_n) / (ttot * 1000000.0); // Avg speed in MK/s
 			printf("\n");
@@ -1057,20 +1110,39 @@ void VanitySearch::PrintStats(uint64_t keys_n, uint64_t keys_n_prev, double ttot
 	int s_end = static_cast<int32_t>(end_tt) % 60;
 	int d_end = static_cast<int32_t>(end_tt * 10) % 10;
 
-	if (!Paused) {
 
-		if (h_end>=0)
-			printf("%.1f MK/s - 2^%.2f [%.2f%%] - RUN: %02d:%02d:%02d.%01d|END: %02d:%02d:%02d.%01d - Found: %d     ",
-				speed, log_keys, perc, h_run, m_run, s_run, d_run, h_end, m_end, s_end, d_end, nbFoundKey);
-		else
-			printf("%.1f MK/s - 2^%.2f [%.2f%%] - RUN: %02d:%02d:%02d.%01d|END: Too much bro - Found: %d     ",
+
+	if (randomMode) {
+		if (!Paused) {
+
+			printf("%.1f MK/s - 2^%.2f [%.2f%%] - RUN: %02d:%02d:%02d.%01d - Found: %d     ",
 				speed, log_keys, perc, h_run, m_run, s_run, d_run, nbFoundKey);
-	} else {
-		printf("Paused - 2^%.2f [%.2f%%] - RUN: %02d:%02d:%02d.%01d|END: %02d:%02d:%02d.%01d - Found: %d     ",
-		log_keys, perc, h_run, m_run, s_run, d_run, h_end, m_end, s_end, d_end, nbFoundKey);
 
-		endOfSearch = true;
-    }
+		}
+		else {
+			printf("Paused - 2^%.2f [%.2f%%] - RUN: %02d:%02d:%02d.%01d - Found: %d     ",
+				log_keys, perc, h_run, m_run, s_run, d_run, nbFoundKey);
+
+			endOfSearch = true;
+		}
+	}
+	else {
+		if (!Paused) {
+
+			if (h_end >= 0)
+				printf("%.1f MK/s - 2^%.2f [%.2f%%] - RUN: %02d:%02d:%02d.%01d|END: %02d:%02d:%02d.%01d - Found: %d     ",
+					speed, log_keys, perc, h_run, m_run, s_run, d_run, h_end, m_end, s_end, d_end, nbFoundKey);
+			else
+				printf("%.1f MK/s - 2^%.2f [%.2f%%] - RUN: %02d:%02d:%02d.%01d|END: Too much bro - Found: %d     ",
+					speed, log_keys, perc, h_run, m_run, s_run, d_run, nbFoundKey);
+		}
+		else {
+			printf("Paused - 2^%.2f [%.2f%%] - RUN: %02d:%02d:%02d.%01d|END: %02d:%02d:%02d.%01d - Found: %d     ",
+				log_keys, perc, h_run, m_run, s_run, d_run, h_end, m_end, s_end, d_end, nbFoundKey);
+
+			endOfSearch = true;
+		}
+	}
 
 
 	printf("\r");

@@ -27,6 +27,7 @@
 #include "../hash/sha256.h"
 #include "../hash/ripemd160.h"
 #include "../Timer.h"
+#include "../Vanity.h"
 
 #include "GPUGroup.h"
 #include "GPUMath.h"
@@ -211,12 +212,12 @@ __global__ void comp_keys(address_t* sAddress, uint32_t* lookup32, uint64_t* key
 
     ModSub256(py, _2Gnx, px);
     _ModMult(py, dy);
-    ModSub256(py, _2Gny);
-                
+    ModSub256(py, _2Gny);               
 
     __syncthreads();
     Store256A(startx, px);
     Store256A(starty, py);
+
 
 }
 
@@ -239,15 +240,17 @@ GPUEngine::GPUEngine(int gpuId, uint32_t maxFound) {
     NB_TRHEAD_PER_GROUP = 256;                                          //////////////////  GRID SIZE ////////////////
     int nbThreadGroup = deviceProp.multiProcessorCount * 128;
 
+    if (!randomMode) {
+        uint64_t powerOfTwo = 1;
+        while (powerOfTwo <= nbThreadGroup) {  //  GET THE CLOSEST POWER OF 2
+            powerOfTwo <<= 1;
+        }
 
-    uint64_t powerOfTwo = 1;
-    while (powerOfTwo <= nbThreadGroup) {  //  GET THE CLOSEST POWER OF 2
-        powerOfTwo <<= 1;
+        powerOfTwo >>= 1;
+        nbThreadGroup = powerOfTwo;
     }
 
-    powerOfTwo >>= 1;
-    nbThreadGroup = powerOfTwo;
-
+    
     g_gpuId = gpuId;
 
     // Initialise CUDA
@@ -581,6 +584,43 @@ bool GPUEngine::SetKeys(Point* p) {
     }
 
     return callKernel();
+    //return true;
+
+}
+
+
+uint64_t new_2Gnx[4];
+uint64_t new_2Gny[4];
+
+bool GPUEngine::SetRandomJump(Point p) {
+
+
+    new_2Gnx[0] = p.x.bits64[0];
+    new_2Gnx[1] = p.x.bits64[1];
+    new_2Gnx[2] = p.x.bits64[2];
+    new_2Gnx[3] = p.x.bits64[3];
+
+    new_2Gny[0] = p.y.bits64[0];
+    new_2Gny[1] = p.y.bits64[1];
+    new_2Gny[2] = p.y.bits64[2];
+    new_2Gny[3] = p.y.bits64[3];
+
+    cudaError_t err;
+
+    err = cudaMemcpyToSymbol(_2Gnx, new_2Gnx, sizeof(new_2Gnx));
+    if (err != cudaSuccess) {
+        printf("GPUEngine: SetRandomJump _2Gnx: %s\n", cudaGetErrorString(err));
+        return false;
+    }
+
+    err = cudaMemcpyToSymbol(_2Gny, new_2Gny, sizeof(new_2Gny));
+    if (err != cudaSuccess) {
+        printf("GPUEngine: SetRandomJump _2Gny: %s\n", cudaGetErrorString(err));
+        return false;
+    }
+
+    return true;
+    //return callKernel();
 
 }
 

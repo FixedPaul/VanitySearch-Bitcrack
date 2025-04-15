@@ -14,6 +14,10 @@
 __device__ __constant__ uint64_t _2Gnx[4] = {0xD5B901B2E285131FULL,0xAAEC6ECDC813B088ULL,0xD664A18F66AD6240ULL,0x241FEBB8E23CBD77ULL}; //1024
 __device__ __constant__ uint64_t _2Gny[4] = {0xABB3E66F2750026DULL,0xCD50FD0FBD0CB5AFULL,0xD6C420BD13981DF8ULL,0x513378D9FF94F8D3ULL};
 
+//__device__ __constant__ uint64_t _2Gnx[4];
+//__device__ __constant__ uint64_t _2Gny[4];
+
+
 
 
 

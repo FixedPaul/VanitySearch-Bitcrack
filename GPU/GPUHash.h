@@ -60,7 +60,29 @@ __device__ __constant__ uint32_t K[] =
     d += t1; \
     h = t1 + S0(a) + Maj(a,b,c);\
 
+__device__ __constant__ uint32_t K_wmix_init[] =
+{
+    0xA50000, 0x10420023,
+};
 
+#define WMIX_init() { \
+w[0] += s0(w[1]);\
+w[1] +=  K_wmix_init[0] + s0(w[2]);\
+w[2] += s1(w[0]) + s0(w[3]);\
+w[3] += s1(w[1]) + s0(w[4]);\
+w[4] += s1(w[2]) + s0(w[5]);\
+w[5] += s1(w[3]) + s0(w[6]);\
+w[6] += s1(w[4]) + w[15] + s0(w[7]);\
+w[7] += s1(w[5]) + w[0] + s0(w[8]);\
+w[8] += s1(w[6]) + w[1];\
+w[9] += s1(w[7]) + w[2];\
+w[10] += s1(w[8]) + w[3];\
+w[11] += s1(w[9]) + w[4];\
+w[12] += s1(w[10]) + w[5];\
+w[13] += s1(w[11]) + w[6];\
+w[14] += s1(w[12]) + w[7] +  K_wmix_init[1];\
+w[15] += s1(w[13]) + w[8] + s0(w[0]);\
+}
 
 // WMIX
 #define WMIX() { \
@@ -129,7 +151,7 @@ __device__ void SHA256Transform(uint32_t s[8],uint32_t* w) {
 
 
   SHA256_RND(0);
-  WMIX();
+  WMIX_init();
   SHA256_RND(16);
   WMIX();
   SHA256_RND(32);

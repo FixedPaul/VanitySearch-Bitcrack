@@ -65,6 +65,7 @@ public:
   void SetAddress(std::vector<address_t> addresses);
   void SetAddress(std::vector<LADDRESS> addresses,uint32_t totalAddress);
   bool SetKeys(Point *p);
+  bool SetRandomJump(Point p);
   void SetSearchMode(int searchMode);
   void SetSearchType(int searchType);
   void SetPattern(const char *pattern);

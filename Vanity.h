@@ -31,6 +31,7 @@ extern std::atomic<bool> Pause;
 extern std::atomic<bool> Paused;
 extern int idxcount;
 extern double t_Paused;
+extern bool randomMode;
 
 class VanitySearch;
 
