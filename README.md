@@ -11,7 +11,7 @@
   <li>Only compressed addresses and prefixes.</li>
   <li>Pressing "p" it is possibile to pause vanitysearch freeing the GPU, press again "p" to resume.</li>
   <li>Added prefix search. Be careful to -m parameter.</li>
-  <li>NEW: Added Random mode.Each GPU thread scans 1024 consecutive random keys at each step.</li>
+  <li>NEW: Added Random mode. Each GPU thread scans 1024 consecutive random keys at each step.</li>
 
 </ul>
 
