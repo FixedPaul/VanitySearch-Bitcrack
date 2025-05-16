@@ -49,7 +49,10 @@ If you want to search for multiple addresses or prefixes, insert them into the i
 Be careful, if you are looking for multiple prefixes, it may be necessary to increase MaxFound using "-m". Use multiples of 65536. The speed might decrease slightly.
 
 In Random mode each thread selects a random number within its subrange and scans 512 keys forward and 512 keys backward. Random mode has no memory; the higher the percentage of the range that is scanned, the greater the probability that already scanned keys will be scanned again.
- 
+
+----------------------------------------------------------------------------
+
+Donations are always welcome! :) bc1qag46ashuyatndd05s0aqeq9d6495c29fjezj09
 
 # Exemples:
 
@@ -62,7 +65,7 @@ Windows:
 
 ```./VanitySearch.exe -gpuId 0 -start 3BA89530000000000 -range 41 1MVDYgVaSN6iKKEsbzRUAYFrYJadLYZvvZ ```
 
-```./VanitySearch.exe -gpuId 0 -start 3BA89530000000000 -range 41 -random 1MVDYgVaSN6iKKEsbzRUAYFrYJadLYZvvZ ```
+```./VanitySearch.exe -gpuId 0 -start 100000000000000000 -range 68 -random 19vkiEajfhuZ8bs8Zu2jgmC6oqZbWqhxhG```
 
 ```./VanitySearch.exe -gpuId 0 -start 3BA89530000000000 -range 41 -backup 1MVDYgVaSN6iKKEsbzRUAYFrYJadLYZvvZ ```
 
@@ -74,3 +77,6 @@ Linux
 # License
 
 VanitySearch is licensed under GPLv3.
+
+
+
