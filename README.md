@@ -12,6 +12,9 @@
   <li>Pressing "p" it is possibile to pause vanitysearch freeing the GPU, press again "p" to resume.</li>
   <li>Added prefix search. Be careful to -m parameter.</li>
   <li>NEW: Added Random mode. Each GPU thread scans 1024 consecutive random keys at each step.</li>
+  <li>NEW: Added backup mode. Approximately every 60 seconds, an automatic backup file is created for each GPU, containing information about the progress made in the last sequential search.
+This makes it possible, by using the "-backup" option, to resume the sequential search while keeping the progress from the last session.
+This is useful in case the program closes for any reason.</li>
 
 </ul>
 
@@ -38,6 +41,8 @@ VanitySeacrh [-v] [-gpuId] [-i inputfile] [-o outputfile] [-start HEX] [-range] 
 
  -random: Random mode active. Each GPU thread scan 1024 random sequentally keys at each step. Not active by default
 
+ -backup: Backup mode allows resuming from the progress percentage of the last sequential search. It does not work with random mode.
+
 
 If you want to search for multiple addresses or prefixes, insert them into the input file.
 
@@ -58,6 +63,8 @@ Windows:
 ```./VanitySearch.exe -gpuId 0 -start 3BA89530000000000 -range 41 1MVDYgVaSN6iKKEsbzRUAYFrYJadLYZvvZ ```
 
 ```./VanitySearch.exe -gpuId 0 -start 3BA89530000000000 -range 41 -random 1MVDYgVaSN6iKKEsbzRUAYFrYJadLYZvvZ ```
+
+```./VanitySearch.exe -gpuId 0 -start 3BA89530000000000 -range 41 -backup 1MVDYgVaSN6iKKEsbzRUAYFrYJadLYZvvZ ```
 
 Linux
 

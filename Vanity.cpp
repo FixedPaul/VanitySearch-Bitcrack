@@ -30,6 +30,8 @@
 #include <thread>
 #include <atomic>
 #include <ctime> 
+#include <iostream>
+#include <fstream>
 
 
 
@@ -52,7 +54,7 @@ VanitySearch::VanitySearch(Secp256K1* secp, vector<std::string>& inputAddresses,
 	this->searchType = -1;
 	this->bc = bc;	
 
-	rseed(time(NULL));
+	rseed(static_cast<unsigned long>(time(NULL)));
 	
 	addresses.clear();
 
@@ -152,7 +154,7 @@ VanitySearch::VanitySearch(Secp256K1* secp, vector<std::string>& inputAddresses,
 	string searchInfo = string(searchModes[searchMode]);
 	if (nbAddress < 10) 
 	{	
-		for (int i = 0; i < nbAddress; i++)
+		for (size_t i = 0; i < nbAddress; i++)
 		{
 			fprintf(stdout, "Search: %s [%s]\n", inputAddresses[i].c_str(), searchInfo.c_str());
 		}
@@ -716,7 +718,7 @@ void VanitySearch::checkAddressesSSE(bool compressed, Int key, int i, Point p1, 
 
 void VanitySearch::getGPUStartingKeys(Int& tRangeStart, Int& tRangeEnd, int groupSize, int nbThread, Point *p, uint64_t Progress) {
 		
-	int grp_startkeys = nbThread/256;
+	uint32_t grp_startkeys = nbThread/256;
 
 	//New setting key by fixedpaul using addition on secp with batch modular inverse, super fast, multithreading not needed
 
@@ -763,7 +765,7 @@ void VanitySearch::getGPUStartingKeys(Int& tRangeStart, Int& tRangeEnd, int grou
 	key_delta.Add(&stepThread);
 	p_delta[1] = secp->ComputePublicKey(&key_delta);
 
-	for (int i = 2; i < grp_startkeys / 2; i++) {
+	for (size_t i = 2; i < grp_startkeys / 2; i++) {
 		p_delta[i] = secp->AddDirect(p_delta[i - 1], p_delta[0]);
 	}
 
@@ -774,9 +776,9 @@ void VanitySearch::getGPUStartingKeys(Int& tRangeStart, Int& tRangeEnd, int grou
 	dx = new Int[grp_startkeys / 2 + 1];
 
 	uint32_t j;
-	uint32_t i;
+	//uint32_t i;
 
-	for (i = grp_startkeys / 2; i < nbThread; i += grp_startkeys) {
+	for (size_t i = grp_startkeys / 2; i < nbThread; i += grp_startkeys) {
 
 		double percentage = (100.0 * (double)(i + grp_startkeys / 2)) / (double)(nbThread);
 		printf("Setting starting keys... [%.2f%%] \r", percentage);
@@ -792,7 +794,7 @@ void VanitySearch::getGPUStartingKeys(Int& tRangeStart, Int& tRangeEnd, int grou
 		Int inverse;
 
 		subp[0].Set(&dx[0]);
-		for (int j = 1; j < grp_startkeys / 2 + 1; j++) {
+		for (size_t j = 1; j < grp_startkeys / 2 + 1; j++) {
 			subp[j].ModMulK1(&subp[j - 1], &dx[j]);
 		}
 
@@ -879,8 +881,6 @@ void VanitySearch::getGPUStartingKeys(Int& tRangeStart, Int& tRangeEnd, int grou
 }
 
 void VanitySearch::FindKeyGPU(TH_PARAM* ph) {
-
-	
 
 	bool ok = true;
 
@@ -988,6 +988,10 @@ void VanitySearch::FindKeyGPU(TH_PARAM* ph) {
 			ok = g.Launch(found, true);
 			idxcount += 1;
 
+			if (!randomMode && idxcount%60==0) {
+				
+				saveBackup(idxcount, ttot, ph->gpuId);
+			}
 			//printf("\n rnd: %s  idx:  %d \n", RandomJump_K_tot.GetBase10().c_str(), idxcount);
 
 			ttot = Timer::get_tick() - t0 + t_Paused;
@@ -1079,6 +1083,7 @@ void VanitySearch::PrintStats(uint64_t keys_n, uint64_t keys_n_prev, double ttot
 	double speed;
 	double perc;
 	double log_keys;
+	double bkeys;
 
 	Int Perc;
 
@@ -1096,6 +1101,8 @@ void VanitySearch::PrintStats(uint64_t keys_n, uint64_t keys_n_prev, double ttot
 
 
 	log_keys = log2(static_cast<double>(keys_n));
+	bkeys = static_cast<double>(keys_n);
+	bkeys = bkeys / 1000000000;
 
 	int h_run = static_cast<int32_t>(ttot) / 3600;
 	int m_run = (static_cast<int32_t>(ttot) % 3600) / 60;
@@ -1115,13 +1122,13 @@ void VanitySearch::PrintStats(uint64_t keys_n, uint64_t keys_n_prev, double ttot
 	if (randomMode) {
 		if (!Paused) {
 
-			printf("%.1f MK/s - 2^%.2f [%.2f%%] - RUN: %02d:%02d:%02d.%01d - Found: %d     ",
-				speed, log_keys, perc, h_run, m_run, s_run, d_run, nbFoundKey);
+			printf("%.1f MK/s - %.0f BKeys - 2^%.2f [%.2f%%] - RUN: %02d:%02d:%02d.%01d - Found: %d     ",
+				speed, bkeys, log_keys, perc, h_run, m_run, s_run, d_run, nbFoundKey);
 
 		}
 		else {
-			printf("Paused - 2^%.2f [%.2f%%] - RUN: %02d:%02d:%02d.%01d - Found: %d     ",
-				log_keys, perc, h_run, m_run, s_run, d_run, nbFoundKey);
+			printf("Paused - %.0f Bkeys -  2^%.2f [%.2f%%] - RUN: %02d:%02d:%02d.%01d - Found: %d     ",
+				bkeys, log_keys, perc, h_run, m_run, s_run, d_run, nbFoundKey);
 
 			endOfSearch = true;
 		}
@@ -1130,15 +1137,15 @@ void VanitySearch::PrintStats(uint64_t keys_n, uint64_t keys_n_prev, double ttot
 		if (!Paused) {
 
 			if (h_end >= 0)
-				printf("%.1f MK/s - 2^%.2f [%.2f%%] - RUN: %02d:%02d:%02d.%01d|END: %02d:%02d:%02d.%01d - Found: %d     ",
-					speed, log_keys, perc, h_run, m_run, s_run, d_run, h_end, m_end, s_end, d_end, nbFoundKey);
+				printf("%.1f MK/s - %.0f BKeys - 2^%.2f [%.2f%%] - RUN: %02d:%02d:%02d.%01d|END: %02d:%02d:%02d.%01d - Found: %d     ",
+					speed, bkeys, log_keys, perc, h_run, m_run, s_run, d_run, h_end, m_end, s_end, d_end, nbFoundKey);
 			else
-				printf("%.1f MK/s - 2^%.2f [%.2f%%] - RUN: %02d:%02d:%02d.%01d|END: Too much bro - Found: %d     ",
-					speed, log_keys, perc, h_run, m_run, s_run, d_run, nbFoundKey);
+				printf("%.1f MK/s - %.0f BKeys - 2^%.2f [%.2f%%] - RUN: %02d:%02d:%02d.%01d|END: Too much bro - Found: %d     ",
+					speed, bkeys, log_keys, perc, h_run, m_run, s_run, d_run, nbFoundKey);
 		}
 		else {
-			printf("Paused - 2^%.2f [%.2f%%] - RUN: %02d:%02d:%02d.%01d|END: %02d:%02d:%02d.%01d - Found: %d     ",
-				log_keys, perc, h_run, m_run, s_run, d_run, h_end, m_end, s_end, d_end, nbFoundKey);
+			printf("Paused - %.0f BKeys - 2^%.2f [%.2f%%] - RUN: %02d:%02d:%02d.%01d|END: %02d:%02d:%02d.%01d - Found: %d     ",
+				bkeys,log_keys, perc, h_run, m_run, s_run, d_run, h_end, m_end, s_end, d_end, nbFoundKey);
 
 			endOfSearch = true;
 		}
@@ -1149,6 +1156,20 @@ void VanitySearch::PrintStats(uint64_t keys_n, uint64_t keys_n_prev, double ttot
 
 
 	fflush(stdout);
+}
+
+
+void VanitySearch::saveBackup(int idxcount, double t_Paused, int gpuid) {
+	std::string filename = "VSbackup_gpu" + std::to_string(gpuid) + ".dat";
+	std::ofstream outFile(filename, std::ios::binary);
+	if (outFile) {
+		outFile.write(reinterpret_cast<const char*>(&idxcount), sizeof(idxcount));
+		outFile.write(reinterpret_cast<const char*>(&t_Paused), sizeof(t_Paused));
+		outFile.close();
+	}
+	else {
+		std::cerr << "Error opening file for writing: " << filename << "\n";
+	}
 }
 
 bool VanitySearch::isAlive(TH_PARAM * p) {
@@ -1197,8 +1218,8 @@ void VanitySearch::saveProgress(TH_PARAM* p, Int& lastSaveKey, BITCRACK_PARAM* b
 
 void VanitySearch::Search(std::vector<int> gpuId, std::vector<int> gridSize) {
 
-	double t0;
-	double t1;
+	//double t0;
+	//double t1;
 	endOfSearch = false;
 	/*numGPUs = ((int)gpuId.size());*/
 	numGPUs = 1;

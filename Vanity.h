@@ -127,6 +127,7 @@ private:
 	void getGPUStartingKeys(Int& tRangeStart, Int& tRangeEnd, int groupSize, int numThreadsGPU, Point* publicKeys, uint64_t Progress);
 	void enumCaseUnsentiveAddress(std::string s, std::vector<std::string>& list);
 	void PrintStats(uint64_t keys_n, uint64_t keys_n_prev, double ttot, double tprev, Int taskSize, Int keycount);
+	void saveBackup(int idxcount, double t_Paused, int gpuid);
 
 	Secp256K1* secp;
 	Int startKey;		

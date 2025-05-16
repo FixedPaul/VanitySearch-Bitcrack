@@ -28,6 +28,7 @@
 #include "hash/sha256.h"
 #include <thread>
 #include <atomic>
+#include <iostream>
 
 #if defined(_WIN32) || defined(_WIN64)
 #include <conio.h> // For _kbhit and _getch on Windows
@@ -102,7 +103,7 @@ void monitorKeypress() {
 #endif
 
 
-#define RELEASE "2.10 by FixedPaul"
+#define RELEASE "2.2 by FixedPaul"
 
 using namespace std;
 
@@ -120,6 +121,7 @@ void printUsage() {
 	printf(" -m: Max number of prefixes found by each kernel call, default is 262144 (use multiple of 65536)\n");
 	printf(" -stop: Stop when all prefixes are found\n");
 	printf(" -random: Random mode active. Each GPU thread scan 1024 random sequentally keys at each step. Not active by default\n");
+	printf(" -backup: Backup mode allows resuming from the progress percentage of the last sequential search. It does not work with random mode. \n");
 	exit(-1);
 
 }
@@ -514,6 +516,21 @@ void reconstructAdd(Secp256K1* secp, string fileName, string outputFile, string 
 	}
 }
 
+bool loadBackup(int& idxcount, double& t_Paused, int gpuid) {
+	std::string filename = "VSbackup_gpu" + std::to_string(gpuid) + ".dat";
+	std::ifstream inFile(filename, std::ios::binary);
+	if (inFile) {
+		inFile.read(reinterpret_cast<char*>(&idxcount), sizeof(idxcount));
+		inFile.read(reinterpret_cast<char*>(&t_Paused), sizeof(t_Paused));
+		inFile.close();
+		return true;
+	}
+	else {
+		std::cerr << "File not found or error opening file for reading: " << filename << "\n";
+		return false;
+	}
+}
+
 int main(int argc, char* argv[]) {
 
 	std::thread inputThread(monitorKeypress);
@@ -534,6 +551,7 @@ int main(int argc, char* argv[]) {
 
 	int a = 1;
 	bool stop = false;
+	bool backupMode = false;
 	int searchMode = SEARCH_COMPRESSED;
 	vector<int> gpuId = { 0 };
 	string gpuParsed = "0";
@@ -589,6 +607,10 @@ int main(int argc, char* argv[]) {
 		}
 		else if (strcmp(argv[a], "-random") == 0) {
 			randomMode = true;
+			a++;
+		}
+		else if (strcmp(argv[a], "-backup") == 0) {
+			backupMode = true;
 			a++;
 		}
 		else if (strcmp(argv[a], "-range") == 0) {
@@ -653,7 +675,7 @@ int main(int argc, char* argv[]) {
 		fprintf(stdout, "[keyspace]  start=%s\n", bc->ksStart.GetBase16().c_str());
 		fprintf(stdout, "[keyspace]    end=%s\n", bc->ksFinish.GetBase16().c_str());
 		if (randomMode) {
-			fprintf(stdout, "Random Mode\n");
+			fprintf(stdout, "Random Mode Enabled !\n");
 		}
 		fflush(stdout);
 
@@ -661,6 +683,11 @@ int main(int argc, char* argv[]) {
 		idxcount = 0;
 		t_Paused = 0;
 		Pause = false;
+
+		if (backupMode) {
+			loadBackup(idxcount, t_Paused, gpuId[0]);
+			fprintf(stdout, "Backup enabled ! \n");
+		}
 	repeatP:
 		Paused = false;
 		VanitySearch* v = new VanitySearch(secp, address, searchMode, stop, outputFile, maxFound, bc);
