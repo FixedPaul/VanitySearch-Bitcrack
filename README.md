@@ -52,7 +52,7 @@ In Random mode each thread selects a random number within its subrange and scans
 
 ----------------------------------------------------------------------------
 
-Donations are always welcome! :) bc1qag46ashuyatndd05s0aqeq9d6495c29fjezj09
+Donations are always welcome! :) bc1qcg7sakly3ct3q76s3wv7u7evg06q36dgkt7h8s
 
 # Exemples:
 
